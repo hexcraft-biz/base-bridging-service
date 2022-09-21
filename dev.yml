@@ -1,0 +1,71 @@
+version: '3.7'
+
+networks:
+  intranet:
+
+services:
+  bridging-service:
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: bridging-service
+    ports:
+      - "9527:9527"
+    env_file:
+      - ./.env
+    restart: on-failure
+    volumes:
+      - type: bind
+        source: ../dev-20220601-chatisfy-e10563af21ae.json
+        target: /app/dev-20220601-chatisfy-e10563af21ae.json
+    depends_on:
+      - bridging-db
+      - redis
+    networks:
+      - intranet
+
+  bridging-db:
+    container_name: dev-shared-mysql
+    image: mysql:8.0.25
+    ports:
+     - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 12345678
+      MYSQL_USER:          admin
+      MYSQL_PASSWORD:      12345678
+    volumes:
+      - "dev_bridging_db:/var/lib/mysql"
+    networks:
+      - intranet
+  redis:
+    image: redis:6.2.7-alpine
+    container_name: dev-shared-redis
+    restart: always
+    environment:
+      - "ENV=develop"
+    ports:
+      - "6379:6379"
+    expose:
+      - "6379"
+    networks:
+      - intranet
+  phpmyadmin:
+    container_name: dev-shared-pma
+    image: phpmyadmin/phpmyadmin
+    ports:
+     - "8008:80"
+    environment:
+      PMA_HOST: bridging-db
+      PMA_PORT: 3306
+    networks:
+      - intranet
+    depends_on:
+      - bridging-db
+
+networks:
+  intranet: 
+    external:
+      name: intranet
+volumes:
+  dev_bridging_db:
+    external: true
